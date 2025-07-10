@@ -160,33 +160,26 @@ class DatabaseManager:
 
     # --- manager profile ---
     def update_profile(self, user_id, **kwargs):
-        """update user profile"""
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if not user:
                 raise Exception("user not exist")
-
+            if 'profile_picture' in kwargs:
+                user.profile_picture = kwargs['profile_picture']
             if 'username' in kwargs:
                 existing_user = self.get_user_by_username(kwargs['username'])
                 if existing_user and existing_user.id != user_id:
                     raise Exception("the username is duplicated")
                 user.username = kwargs['username']
-
             if 'phone_number' in kwargs:
                 existing_user = self.get_user_by_phone(kwargs['phone_number'])
                 if existing_user and existing_user.id != user_id:
                     raise Exception("the phone number is duplicated")
                 user.phone_number = kwargs['phone_number']
-
             if 'password' in kwargs:
                 user.password = pbkdf2_sha256.hash(kwargs['password'])
-
             if 'bio' in kwargs:
                 user.bio = kwargs['bio']
-
-            if 'profile_picture' in kwargs:
-                user.profile_picture = kwargs['profile_picture']
-
             self.session.commit()
             return user
         except Exception as error:
