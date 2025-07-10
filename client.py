@@ -1,6 +1,7 @@
 import sys
 import socket
 import os
+import shutil
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap, QFont
@@ -9,6 +10,7 @@ from PyQt6.QtGui import QIcon
 
 print(os.path.abspath("Contact.png"))
 print(os.path.abspath("setting.png"))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 1234
@@ -100,45 +102,72 @@ class ProfileDialog(QDialog):
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent=None, username=""):
+    def __init__(self, user, db, parent=None):
         super().__init__(parent)
-        self.mainwin = parent
+        self.user = user
+        self.db = db
         self.setWindowTitle("Settings")
-        self.setFixedSize(340, 240)
+        self.setFixedSize(400, 450)
         self.setStyleSheet("""
-            QDialog {background:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #6da1de, stop:1 #1a223a);}
-            QLineEdit, QComboBox {background:#222; color:white; border-radius:5px; padding:8px; font-size:13px; border:1px solid #666;}
-            QPushButton {background:#183e5c; color:white; border-radius:6px; padding:8px;}
-            QPushButton:hover {background:#38a;}
-            QLabel {color:white;}
+            QDialog {background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #840202, stop:1 #400000);}
+            QLineEdit {background: #222; color:white; border-radius:5px; padding:8px; font-size:13px; border:1px solid #222;}
+            QPushButton {background: #444; color:white; border-radius:6px; padding:10px;}
+            QPushButton:hover {background: #bb4444;}
+            QLabel {color:white; margin-top: 12px;}
         """)
         layout = QVBoxLayout()
-        self.username_input = QLineEdit(username)
-        self.username_input.setPlaceholderText("Change Username")
+        self.username_input = QLineEdit(self.user.username)
+        self.username_input.setReadOnly(True)
         layout.addWidget(QLabel("Username:"))
         layout.addWidget(self.username_input)
-        self.theme_box = QComboBox()
-        self.theme_box.addItems(["Dark", "Light"])
-        if parent and hasattr(parent, "current_theme"):
-            self.theme_box.setCurrentIndex(1 if parent.current_theme == "Light" else 0)
-        layout.addWidget(QLabel("Theme:"))
-        layout.addWidget(self.theme_box)
-        btns = QHBoxLayout()
-        savebtn = QPushButton("Save")
-        logoutbtn = QPushButton("Log out")
-        btns.addWidget(savebtn)
-        btns.addWidget(logoutbtn)
-        layout.addLayout(btns)
-        savebtn.clicked.connect(self.save_settings)
-        logoutbtn.clicked.connect(self.logout)
+        self.phone_input = QLineEdit(self.user.phone_number)
+        layout.addWidget(QLabel("Phone Number:"))
+        layout.addWidget(self.phone_input)
+        self.pass_input = QLineEdit()
+        self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(QLabel("New Password:"))
+        layout.addWidget(self.pass_input)
+        self.conf_pass_input = QLineEdit()
+        self.conf_pass_input.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(QLabel("Confirm New Password:"))
+        layout.addWidget(self.conf_pass_input)
+        self.change_pic_btn = QPushButton("Change Profile Picture")
+        layout.addWidget(self.change_pic_btn)
+        self.save_btn = QPushButton("Save Changes")
+        layout.addWidget(self.save_btn)
         self.setLayout(layout)
+        self.change_pic_btn.clicked.connect(self.choose_image)
+        self.save_btn.clicked.connect(self.save_settings)
+
+    def choose_image(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Profile Picture",
+            "",
+            "Image Files (*.png *.jpg *.jpeg)"
+        )
+        if file_path:
+            filename = f"profile_{self.user.username}.jpg"
+            profile_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profile_pics")
+            if not os.path.exists(profile_dir):
+                os.makedirs(profile_dir)
+            dest = os.path.join(profile_dir, filename)
+            try:
+                shutil.copyfile(file_path, dest)
+                self.db.update_profile(user_id=self.user.id, profile_picture=filename)
+                QMessageBox.information(self, "Success", "Profile picture updated!")
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Could not update picture:\n{e}")
 
     def save_settings(self):
-        t = self.theme_box.currentText()
-        if self.mainwin:
-            self.mainwin.apply_theme(t)
-            self.mainwin.set_username(self.username_input.text())
-        QMessageBox.information(self, "Saved", "Settings saved (UI Only!)")
+        phone = self.phone_input.text().strip()
+        password = self.pass_input.text()
+        conf_password = self.conf_pass_input.text()
+        if password and password != conf_password:
+            QMessageBox.warning(self, "Error", "Passwords do not match.")
+            return
+        self.db.update_profile(user_id=self.user.id, phone_number=phone, password=password if password else None)
+        QMessageBox.information(self, "Saved", "Changes saved")
         self.accept()
 
     def logout(self):
@@ -148,6 +177,8 @@ class SettingsDialog(QDialog):
 
 
 class ContactCard(QWidget):
+    clicked = pyqtSignal(str, str)
+
     def __init__(self, username, phone, avatar="/Users/melika/Poly_Messenger/Contact.png"):
         super().__init__()
         self.username = username
@@ -172,6 +203,9 @@ class ContactCard(QWidget):
         vtxt.addWidget(QLabel(username))
         vtxt.addWidget(QLabel(phone))
         lyt.addLayout(vtxt)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit(self.username, self.phone)
 
 
 class ChatWindow(QWidget):
@@ -246,6 +280,9 @@ class ChatWindow(QWidget):
         hdilogo.setStyleSheet("color:rgba(255,255,255,0.15);")
         center_ly.addWidget(hdilogo)
         center_ly.addStretch()
+        self.chat_display = QTextEdit()
+        self.chat_display.setReadOnly(True)
+        center_ly.insertWidget(0, self.chat_display)
         input_row = QHBoxLayout()
         self.message_input = QLineEdit()
         self.message_input.setPlaceholderText("Type a message...")
@@ -286,7 +323,9 @@ class ChatWindow(QWidget):
             w = self.contacts_layout.itemAt(i).widget()
             if w: w.setParent(None)
         for c in self.contacts:
-            self.contacts_layout.addWidget(ContactCard(*c))
+            card = ContactCard(c[0], c[1], c[2])
+            card.clicked.connect(self.open_private_chat)
+            self.contacts_layout.addWidget(card)
 
     def apply_theme(self, theme):
         self.current_theme = theme
@@ -319,6 +358,51 @@ class ChatWindow(QWidget):
         except:
             pass
         event.accept()
+
+    def open_private_chat(self, username, phone):
+        contact_user = self.db.get_user_by_username(username)
+        chat = PrivateChatWindow(self.db, self.current_user, contact_user)
+        chat.show()
+        if not hasattr(self, "open_chats"): self.open_chats = []
+        self.open_chats.append(chat)
+
+
+class PrivateChatWindow(QWidget):
+    def __init__(self, db, current_user, contact_user):
+        super().__init__()
+        self.db = db
+        self.current_user = current_user
+        self.contact_user = contact_user
+        self.setWindowTitle(f"Chat with {self.contact_user.username}")
+
+        self.chat_display = QTextEdit()
+        self.chat_display.setReadOnly(True)
+        self.message_input = QLineEdit()
+        self.send_button = QPushButton("Send")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.chat_display)
+        layout.addWidget(self.message_input)
+        layout.addWidget(self.send_button)
+        self.setLayout(layout)
+
+        self.send_button.clicked.connect(self.send_message)
+        self.message_input.returnPressed.connect(self.send_message)
+        self.load_messages()
+
+    def load_messages(self):
+        messages = self.db.get_messages_between_users(self.current_user.id, self.contact_user.id)
+        self.chat_display.clear()
+        for msg in messages:
+            sender = "You" if msg.sender_id == self.current_user.id else self.contact_user.username
+            self.chat_display.append(f"<b>{sender}:</b> {msg.content}")
+
+    def send_message(self):
+        content = self.message_input.text().strip()
+        if content:
+            self.db.add_message(self.current_user.id, self.contact_user.id, content)
+            self.message_input.clear()
+            self.load_messages()
 
 
 class LoginWindow(QWidget):
