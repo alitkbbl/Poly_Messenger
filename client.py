@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap, QFont
 from PyQt6 import QtCore
 from PyQt6.QtGui import QIcon
+from databasem import DatabaseManager
 
 print(os.path.abspath("Contact.png"))
 print(os.path.abspath("setting.png"))
@@ -217,6 +218,7 @@ class ChatWindow(QWidget):
         self.username = username
         self.phone = phone
         self.contacts = []
+        self.db = DatabaseManager()
         self.setWindowTitle(f"Welcome {username}")
         sidebar = QWidget()
         sidebar.setFixedWidth(145)
@@ -363,6 +365,7 @@ class ChatWindow(QWidget):
         contact_user = self.db.get_user_by_username(username)
         chat = PrivateChatWindow(self.db, self.current_user, contact_user)
         chat.show()
+        self.current_user = self.db.get_user_by_username(self.username)
         if not hasattr(self, "open_chats"): self.open_chats = []
         self.open_chats.append(chat)
 
