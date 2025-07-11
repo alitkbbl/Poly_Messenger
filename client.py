@@ -180,11 +180,18 @@ class SettingsDialog(QDialog):
 class ContactCard(QWidget):
     clicked = pyqtSignal(str, str)
 
-    def __init__(self, username, phone, avatar="/Users/melika/Poly_Messenger/Contact.png"):
+    def __init__(self, username, phone, avatar=None):
         super().__init__()
         self.username = username
         self.phone = phone
+
+        if avatar is None or not os.path.exists(avatar):
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            avatar = os.path.join(BASE_DIR, "Contact.png")
+            if not os.path.exists(avatar):
+                avatar = None
         self.avatar = avatar
+
         self.setFixedHeight(68)
         self.setStyleSheet("""
             QWidget {
@@ -194,12 +201,18 @@ class ContactCard(QWidget):
             }
             QLabel {color:white;}
         """)
+
         lyt = QHBoxLayout(self)
         img = QLabel()
-        img.setPixmap(
-            QPixmap("/Users/melika/Poly_Messenger/Contact.png").scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio,
-                                                                       Qt.TransformationMode.SmoothTransformation))
+        if self.avatar and os.path.exists(self.avatar):
+            img.setPixmap(QPixmap(self.avatar).scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio,
+                                                      Qt.TransformationMode.SmoothTransformation))
+        else:
+            blank = QPixmap(48, 48)
+            blank.fill(Qt.GlobalColor.darkCyan)
+            img.setPixmap(blank)
         lyt.addWidget(img)
+
         vtxt = QVBoxLayout()
         vtxt.addWidget(QLabel(username))
         vtxt.addWidget(QLabel(phone))
@@ -219,7 +232,9 @@ class ChatWindow(QWidget):
         self.phone = phone
         self.contacts = []
         self.db = DatabaseManager()
+        self.current_user = self.db.get_user_by_username(self.username)
         self.setWindowTitle(f"Welcome {username}")
+
         sidebar = QWidget()
         sidebar.setFixedWidth(145)
         sidebar.setStyleSheet("""
@@ -229,31 +244,26 @@ class ChatWindow(QWidget):
                 border-bottom-left-radius:7px;
             }
         """)
-
         sb_layout = QVBoxLayout(sidebar)
         sb_layout.setSpacing(13)
         sb_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
         row_icons = QHBoxLayout()
         set_btn = QToolButton()
         set_btn.setIcon(QIcon("setting.png"))
         set_btn.setIconSize(QtCore.QSize(32, 32))
         set_btn.setToolTip("Settings")
         set_btn.clicked.connect(self.openSettingsDialog)
-
         contact_btn = QToolButton()
         contact_btn.setIcon(QIcon("Contact.png"))
         contact_btn.setIconSize(QtCore.QSize(32, 32))
         contact_btn.setToolTip("Contacts")
         contact_btn.clicked.connect(self.open_contacts)
-
         add_btn = QToolButton()
         add_btn.setIcon(QIcon.fromTheme("list-add"))
         add_btn.setText("➕")
         add_btn.setIconSize(QtCore.QSize(25, 25))
         add_btn.setToolTip("Add Contact")
         add_btn.clicked.connect(self.openAddContactDialog)
-
         row_icons.addWidget(set_btn)
         row_icons.addWidget(contact_btn)
         row_icons.addWidget(add_btn)
@@ -301,6 +311,7 @@ class ChatWindow(QWidget):
         self.send_button.clicked.connect(self.send_message)
         self.message_input.returnPressed.connect(self.send_message)
         self.apply_theme("Dark")
+        self.open_chats = []
         self.receiver = ReceiverThread(self.sock)
         self.receiver.message_received.connect(self.display_message)
         self.receiver.start()
@@ -321,9 +332,11 @@ class ChatWindow(QWidget):
             dlg.accept()
 
     def update_contacts_gui(self):
-        for i in reversed(range(self.contacts_layout.count())):
-            w = self.contacts_layout.itemAt(i).widget()
-            if w: w.setParent(None)
+        while self.contacts_layout.count():
+            item = self.contacts_layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
         for c in self.contacts:
             card = ContactCard(c[0], c[1], c[2])
             card.clicked.connect(self.open_private_chat)
@@ -335,6 +348,7 @@ class ChatWindow(QWidget):
     def set_username(self, uname):
         self.username = uname
         self.setWindowTitle(f"Welcome {uname}")
+        self.current_user = self.db.get_user_by_username(self.username)
 
     def send_message(self):
         msg = self.message_input.text().strip()
@@ -346,7 +360,8 @@ class ChatWindow(QWidget):
                 QMessageBox.critical(self, "Error", "Disconnected from server.")
 
     def display_message(self, msg):
-        pass
+        if hasattr(self, "chat_display") and self.chat_display:
+            self.chat_display.append(msg)
 
     def logout_and_return(self):
         self.close()
@@ -355,18 +370,22 @@ class ChatWindow(QWidget):
 
     def closeEvent(self, event):
         try:
-            self.receiver.stop()
-            self.sock.close()
-        except:
-            pass
+            if hasattr(self, "receiver") and self.receiver.isRunning():
+                self.receiver.stop()
+                self.receiver.wait(100)
+            if hasattr(self, "sock"):
+                self.sock.close()
+        except Exception as e:
+            print("Error in closeEvent:", e)
         event.accept()
 
     def open_private_chat(self, username, phone):
         contact_user = self.db.get_user_by_username(username)
+        if contact_user is None:
+            QMessageBox.warning(self, "Error", f"User {username} not found in database.")
+            return
         chat = PrivateChatWindow(self.db, self.current_user, contact_user)
         chat.show()
-        self.current_user = self.db.get_user_by_username(self.username)
-        if not hasattr(self, "open_chats"): self.open_chats = []
         self.open_chats.append(chat)
 
 
