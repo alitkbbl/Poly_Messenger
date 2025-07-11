@@ -65,116 +65,97 @@ class AddContactDialog(QDialog):
         self.setLayout(layout)
 
 
-class ProfileDialog(QDialog):
-    def __init__(self, parent=None, username="", phone="", avatar=None):
-        super().__init__(parent)
-        self.setWindowTitle("Profile")
-        self.setFixedSize(320, 350)
-        self.setStyleSheet("""
-            QDialog {background:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #1849a6, stop: 1 #191622);}
-            QLabel {color:white; font-size:16px;}
-        """)
-        layout = QVBoxLayout()
-        avatar_label = QLabel()
-        avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if avatar:
-            avatar_pixmap = QPixmap(avatar).scaled(110, 110, Qt.AspectRatioMode.KeepAspectRatio,
-                                                   Qt.TransformationMode.SmoothTransformation)
-        else:
-            avatar_pixmap = QPixmap(110, 110)
-            avatar_pixmap.fill(Qt.GlobalColor.darkGray)
-        avatar_label.setPixmap(avatar_pixmap)
-        avatar_label.setFixedHeight(120)
-        layout.addWidget(avatar_label)
-        layout.addSpacing(18)
-        uname = QLabel(f"Username: {username}")
-        uname.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        phone_label = QLabel(f"Phone: {phone}")
-        phone_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(uname)
-        layout.addWidget(phone_label)
-        layout.addStretch()
-        hdi_lbl = QLabel("HDI")
-        hdi_lbl.setFont(QFont("Arial Black", 20))
-        hdi_lbl.setStyleSheet("color:#ddd;")
-        hdi_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
-        layout.addWidget(hdi_lbl)
-        self.setLayout(layout)
-
-
 class SettingsDialog(QDialog):
     def __init__(self, user, db, parent=None):
         super().__init__(parent)
-        self.user = user
-        self.db = db
-        self.setWindowTitle("Settings")
-        self.setFixedSize(400, 450)
-        self.setStyleSheet("""
-            QDialog {background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #840202, stop:1 #400000);}
-            QLineEdit {background: #222; color:white; border-radius:5px; padding:8px; font-size:13px; border:1px solid #222;}
-            QPushButton {background: #444; color:white; border-radius:6px; padding:10px;}
-            QPushButton:hover {background: #bb4444;}
-            QLabel {color:white; margin-top: 12px;}
-        """)
-        layout = QVBoxLayout()
-        self.username_input = QLineEdit(self.user.username)
-        self.username_input.setReadOnly(True)
-        layout.addWidget(QLabel("Username:"))
-        layout.addWidget(self.username_input)
-        self.phone_input = QLineEdit(self.user.phone_number)
-        layout.addWidget(QLabel("Phone Number:"))
-        layout.addWidget(self.phone_input)
-        self.pass_input = QLineEdit()
-        self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(QLabel("New Password:"))
-        layout.addWidget(self.pass_input)
-        self.conf_pass_input = QLineEdit()
-        self.conf_pass_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(QLabel("Confirm New Password:"))
-        layout.addWidget(self.conf_pass_input)
-        self.change_pic_btn = QPushButton("Change Profile Picture")
-        layout.addWidget(self.change_pic_btn)
-        self.save_btn = QPushButton("Save Changes")
-        layout.addWidget(self.save_btn)
-        self.setLayout(layout)
-        self.change_pic_btn.clicked.connect(self.choose_image)
-        self.save_btn.clicked.connect(self.save_settings)
+        try:
+            if user is None or db is None:
+                raise ValueError("User or db object is None")
+            self.user = user
+            self.db = db
+            self.setWindowTitle("Settings")
+            self.setFixedSize(400, 450)
+            self.setStyleSheet("""
+                QDialog {background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #840202, stop:1 #400000);}
+                QLineEdit {background: #222; color:white; border-radius:5px; padding:8px; font-size:14px; border:1px solid #222;}
+                QPushButton {background: #444; color:white; border-radius:6px; padding:10px; font-size:15px;}
+                QPushButton:hover {background: #bb4444;}
+                QLabel {color:white; margin-top: 12px; font-size:15px;}
+            """)
+            layout = QVBoxLayout()
+            layout.setContentsMargins(35, 15, 35, 0)
+            layout.setSpacing(7)
+
+            uname = getattr(self.user, "username", "")
+            uphone = getattr(self.user, "phone_number", "")
+
+            layout.addWidget(QLabel("Username:"))
+            self.username_input = QLineEdit(uname)
+            self.username_input.setReadOnly(True)
+            layout.addWidget(self.username_input)
+
+            layout.addWidget(QLabel("Phone Number:"))
+            self.phone_input = QLineEdit(uphone)
+            layout.addWidget(self.phone_input)
+
+            layout.addWidget(QLabel("New Password:"))
+            self.pass_input = QLineEdit()
+            self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
+            layout.addWidget(self.pass_input)
+
+            layout.addWidget(QLabel("Confirm New Password:"))
+            self.conf_pass_input = QLineEdit()
+            self.conf_pass_input.setEchoMode(QLineEdit.EchoMode.Password)
+            layout.addWidget(self.conf_pass_input)
+
+            self.change_pic_btn = QPushButton("Change Profile Picture")
+            layout.addWidget(self.change_pic_btn)
+
+            self.save_btn = QPushButton("Save Changes")
+            layout.addWidget(self.save_btn)
+
+            logo = QLabel("HDI")
+            logo.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            logo.setStyleSheet("font-weight:bold; font-size:40px; letter-spacing:10px; padding:12px 0 0 0;")
+            layout.addWidget(logo)
+
+            self.setLayout(layout)
+            self.change_pic_btn.clicked.connect(self.choose_image)
+            self.save_btn.clicked.connect(self.save_settings)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"SettingsDialog init failed:{e}")
+            self.close()
 
     def choose_image(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Profile Picture",
-            "",
-            "Image Files (*.png *.jpg *.jpeg)"
-        )
-        if file_path:
-            filename = f"profile_{self.user.username}.jpg"
-            profile_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profile_pics")
-            if not os.path.exists(profile_dir):
-                os.makedirs(profile_dir)
-            dest = os.path.join(profile_dir, filename)
-            try:
+        try:
+            file_path, _ = QFileDialog.getOpenFileName(self, "Select Profile Picture", "",
+                                                       "Image Files (*.png *.jpg *.jpeg)")
+            if file_path:
+                filename = f"profile_{self.user.username}.jpg"
+                profile_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profile_pics")
+                if not os.path.exists(profile_dir):
+                    os.makedirs(profile_dir)
+                dest = os.path.join(profile_dir, filename)
                 shutil.copyfile(file_path, dest)
                 self.db.update_profile(user_id=self.user.id, profile_picture=filename)
-                QMessageBox.information(self, "Success", "Profile picture updated!")
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Could not update picture:\n{e}")
+                QMessageBox.information(self, "Success", "Profile picture updated!", parent=self)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Could not update picture:{e}", parent=self)
 
     def save_settings(self):
-        phone = self.phone_input.text().strip()
-        password = self.pass_input.text()
-        conf_password = self.conf_pass_input.text()
-        if password and password != conf_password:
-            QMessageBox.warning(self, "Error", "Passwords do not match.")
-            return
-        self.db.update_profile(user_id=self.user.id, phone_number=phone, password=password if password else None)
-        QMessageBox.information(self, "Saved", "Changes saved")
-        self.accept()
-
-    def logout(self):
-        self.accept()
-        if self.mainwin:
-            self.mainwin.logout_and_return()
+        try:
+            phone = self.phone_input.text().strip()
+            password = self.pass_input.text()
+            conf_password = self.conf_pass_input.text()
+            if password and password != conf_password:
+                QMessageBox.warning(self, "Error", "Passwords do not match.", parent=self)
+                return
+            self.db.update_profile(user_id=self.user.id, phone_number=phone, password=password if password else None)
+            QMessageBox.information(self, "Saved", "Changes saved", parent=self)
+            self.accept()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Could not save changes:{e}", parent=self)
 
 
 class ContactCard(QWidget):
@@ -253,11 +234,7 @@ class ChatWindow(QWidget):
         set_btn.setIconSize(QtCore.QSize(32, 32))
         set_btn.setToolTip("Settings")
         set_btn.clicked.connect(self.openSettingsDialog)
-        contact_btn = QToolButton()
-        contact_btn.setIcon(QIcon("Contact.png"))
-        contact_btn.setIconSize(QtCore.QSize(32, 32))
-        contact_btn.setToolTip("Contacts")
-        contact_btn.clicked.connect(self.open_contacts)
+
         add_btn = QToolButton()
         add_btn.setIcon(QIcon.fromTheme("list-add"))
         add_btn.setText("➕")
@@ -265,7 +242,7 @@ class ChatWindow(QWidget):
         add_btn.setToolTip("Add Contact")
         add_btn.clicked.connect(self.openAddContactDialog)
         row_icons.addWidget(set_btn)
-        row_icons.addWidget(contact_btn)
+
         row_icons.addWidget(add_btn)
         sb_layout.addLayout(row_icons)
         self.contacts_layout = QVBoxLayout()
@@ -396,17 +373,66 @@ class PrivateChatWindow(QWidget):
         self.current_user = current_user
         self.contact_user = contact_user
         self.setWindowTitle(f"Chat with {self.contact_user.username}")
+        self.setMinimumSize(650, 500)
+
+        center_panel = QWidget()
+        center_panel.setStyleSheet("""
+            QWidget {
+                background:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #20936b, stop:1 #17222e);
+                border-radius:12px;
+            }
+        """)
+
+        chat_layout = QVBoxLayout(center_panel)
+        chat_layout.setSpacing(0)
+        chat_layout.setContentsMargins(20, 18, 20, 18)
 
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
-        self.message_input = QLineEdit()
-        self.send_button = QPushButton("Send")
+        self.chat_display.setStyleSheet("""
+            QTextEdit {
+                background: transparent;
+                color: #fff;
+                font-size:15px;
+                border:none;
+            }
+        """)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.chat_display)
-        layout.addWidget(self.message_input)
-        layout.addWidget(self.send_button)
-        self.setLayout(layout)
+        input_row = QHBoxLayout()
+        self.message_input = QLineEdit()
+        self.message_input.setPlaceholderText("Type a message...")
+        self.message_input.setStyleSheet("""
+            QLineEdit {
+                background: #272727;
+                color: #fff;
+                border-radius: 9px;
+                padding: 9px;
+                font-size:14px;
+                border: 1px solid #313131;
+            }
+        """)
+        self.send_button = QPushButton("Send")
+        self.send_button.setStyleSheet("""
+            QPushButton {
+                background-color: #00897B;
+                color: #fff;
+                border-radius: 7px;
+                padding: 8px 22px;
+                font-size: 15px;
+            }
+            QPushButton:hover {
+                background-color: #00BFAE;
+            }
+        """)
+        input_row.addWidget(self.message_input)
+        input_row.addWidget(self.send_button)
+
+        chat_layout.addWidget(self.chat_display)
+        chat_layout.addLayout(input_row)
+
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(center_panel)
 
         self.send_button.clicked.connect(self.send_message)
         self.message_input.returnPressed.connect(self.send_message)
