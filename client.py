@@ -74,55 +74,79 @@ class SettingsDialog(QDialog):
             self.user = user
             self.db = db
             self.setWindowTitle("Settings")
-            self.setFixedSize(400, 450)
+            self.setFixedSize(410, 490)
             self.setStyleSheet("""
-                QDialog {background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #840202, stop:1 #400000);}
-                QLineEdit {background: #222; color:white; border-radius:5px; padding:8px; font-size:14px; border:1px solid #222;}
-                QPushButton {background: #444; color:white; border-radius:6px; padding:10px; font-size:15px;}
-                QPushButton:hover {background: #bb4444;}
-                QLabel {color:white; margin-top: 12px; font-size:15px;}
+                QDialog {
+                    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0,y2:1, stop:0 #a10000, stop:1 #400000);
+                    border-radius: 17px;
+                }
+                QLineEdit {
+                    background: #222;
+                    color: #eee;
+                    border-radius: 7px;
+                    border: 1.7px solid #343434;
+                    padding: 9px;
+                    font-size: 16px;
+                    font-family: Consolas;
+                }
+                QPushButton {
+                    background: #444;
+                    color:#fff;
+                    border-radius: 7px;
+                    padding:12px;
+                    font-size:16px;
+                    font-weight: 600;
+                }
+                QPushButton:hover {background: #b14040;}
+                QLabel {color:#fff; font-size:15.5px; font-family: Calibri; margin-top:7px;}
             """)
             layout = QVBoxLayout()
-            layout.setContentsMargins(35, 15, 35, 0)
-            layout.setSpacing(7)
+            layout.setContentsMargins(36, 24, 36, 19)
+            layout.setSpacing(9)
 
             uname = getattr(self.user, "username", "")
             uphone = getattr(self.user, "phone_number", "")
-
             layout.addWidget(QLabel("Username:"))
             self.username_input = QLineEdit(uname)
-            self.username_input.setReadOnly(True)
+            self.username_input.setStyleSheet("color:#eee;background:#333;font-weight:bold;")
             layout.addWidget(self.username_input)
-
             layout.addWidget(QLabel("Phone Number:"))
-            self.phone_input = QLineEdit(uphone)
+            self.phone_input = QLineEdit(str(uphone))
             layout.addWidget(self.phone_input)
-
             layout.addWidget(QLabel("New Password:"))
             self.pass_input = QLineEdit()
             self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
             layout.addWidget(self.pass_input)
-
             layout.addWidget(QLabel("Confirm New Password:"))
             self.conf_pass_input = QLineEdit()
             self.conf_pass_input.setEchoMode(QLineEdit.EchoMode.Password)
             layout.addWidget(self.conf_pass_input)
-
             self.change_pic_btn = QPushButton("Change Profile Picture")
+            self.change_pic_btn.setStyleSheet("""
+                QPushButton {background:#676060;color:#fff;font-weight:500;}
+                QPushButton:hover {background:#b14040;}
+            """)
             layout.addWidget(self.change_pic_btn)
-
             self.save_btn = QPushButton("Save Changes")
+            self.save_btn.setStyleSheet("""
+                QPushButton {background:#676060;color:#fff;font-weight:600;}
+                QPushButton:hover {background:#b14040;}
+            """)
             layout.addWidget(self.save_btn)
-
             logo = QLabel("HDI")
             logo.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            logo.setStyleSheet("font-weight:bold; font-size:40px; letter-spacing:10px; padding:12px 0 0 0;")
+            logo.setFont(QFont("Arial Black", 54, QFont.Weight.Bold))
+            logo.setStyleSheet("""
+                color:white;
+                margin-top:13px; 
+                font-weight: bold;
+                letter-spacing: 13px;
+            """)
+            layout.addStretch(1)
             layout.addWidget(logo)
-
             self.setLayout(layout)
             self.change_pic_btn.clicked.connect(self.choose_image)
             self.save_btn.clicked.connect(self.save_settings)
-
         except Exception as e:
             QMessageBox.critical(self, "Error", f"SettingsDialog init failed:{e}")
             self.close()
@@ -145,13 +169,19 @@ class SettingsDialog(QDialog):
 
     def save_settings(self):
         try:
+            uname = self.username_input.text().strip()
             phone = self.phone_input.text().strip()
             password = self.pass_input.text()
             conf_password = self.conf_pass_input.text()
             if password and password != conf_password:
                 QMessageBox.warning(self, "Error", "Passwords do not match.", parent=self)
                 return
-            self.db.update_profile(user_id=self.user.id, phone_number=phone, password=password if password else None)
+            self.db.update_profile(
+                user_id=self.user.id,
+                username=uname,
+                phone_number=phone,
+                password=password if password else None
+            )
             QMessageBox.information(self, "Saved", "Changes saved", parent=self)
             self.accept()
         except Exception as e:
