@@ -10,7 +10,7 @@ A real-time chat application developed using Python and PyQt6, featuring live me
   
 ## 🔧 Technologies Used  
 - Python (PyQt6, threading, socket)  
-- Database (PostgreSQL)  
+- Database (SQLlite)  
 - Object-Oriented Programming (OOP)  
 - UI Design with PyQt6  
 
