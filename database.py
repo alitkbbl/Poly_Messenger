@@ -82,10 +82,10 @@ class DatabaseManager:
             self.session.rollback()
             raise Exception(str(error))
 
-    def login_user(self,username, password):
+    def login_user(self, username, password):
         """sign Up"""
         user = self.session.query(User).filter_by(username=username).first()
-        if user and user.password == password:  # compare password hash
+        if user and pbkdf2_sha256.verify(password, user.password):  # compare password hash
             return user
         return None
 
@@ -163,28 +163,29 @@ class DatabaseManager:
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if not user:
-                raise Exception("user not exist")
-            if 'profile_picture' in kwargs:
-                user.profile_picture = kwargs['profile_picture']
-            if 'username' in kwargs:
-                existing_user = self.get_user_by_username(kwargs['username'])
-                if existing_user and existing_user.id != user_id:
-                    raise Exception("the username is duplicated")
+                raise Exception("User not found")
+
+            if 'username' in kwargs and kwargs['username']:
+                existing = self.get_user_by_username(kwargs['username'])
+                if existing and existing.id != user_id:
+                    raise Exception("Username already exists")
                 user.username = kwargs['username']
-            if 'phone_number' in kwargs:
-                existing_user = self.get_user_by_phone(kwargs['phone_number'])
-                if existing_user and existing_user.id != user_id:
-                    raise Exception("the phone number is duplicated")
+
+            if 'phone_number' in kwargs and kwargs['phone_number']:
+                existing = self.get_user_by_phone(kwargs['phone_number'])
+                if existing and existing.id != user_id:
+                    raise Exception("Phone number already exists")
                 user.phone_number = kwargs['phone_number']
-            if 'password' in kwargs:
+
+            if 'password' in kwargs and kwargs['password']:
                 user.password = pbkdf2_sha256.hash(kwargs['password'])
-            if 'bio' in kwargs:
-                user.bio = kwargs['bio']
+
             self.session.commit()
             return user
-        except Exception as error:
+
+        except Exception as e:
             self.session.rollback()
-            raise Exception(str(error))
+            raise Exception(str(e))
 
     def close(self):
         """close database connection"""

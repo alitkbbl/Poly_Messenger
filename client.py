@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap, QFont
 from PyQt6 import QtCore
 from PyQt6.QtGui import QIcon
-from databasem import DatabaseManager
+from database import DatabaseManager
 
 print(os.path.abspath("Contact.png"))
 print(os.path.abspath("setting.png"))
@@ -153,19 +153,48 @@ class SettingsDialog(QDialog):
 
     def choose_image(self):
         try:
-            file_path, _ = QFileDialog.getOpenFileName(self, "Select Profile Picture", "",
-                                                       "Image Files (*.png *.jpg *.jpeg)")
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select Profile Picture",
+                "",
+                "Image Files (*.png *.jpg *.jpeg)"
+            )
+
             if file_path:
+                # ایجاد دایرکتوری اگر وجود ندارد
+                profile_dir = os.path.join(BASE_DIR, "profile_pics")
+                os.makedirs(profile_dir, exist_ok=True)
+
+                # بررسی قابل نوشتن بودن دایرکتوری
+                if not os.access(profile_dir, os.W_OK):
+                    raise Exception("Cannot write to profile directory")
+
                 filename = f"profile_{self.user.username}.jpg"
-                profile_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profile_pics")
-                if not os.path.exists(profile_dir):
-                    os.makedirs(profile_dir)
                 dest = os.path.join(profile_dir, filename)
-                shutil.copyfile(file_path, dest)
-                self.db.update_profile(user_id=self.user.id, profile_picture=filename)
-                QMessageBox.information(self, "Success", "Profile picture updated!", parent=self)
+
+                # کپی فایل با مدیریت خطا
+                try:
+                    shutil.copyfile(file_path, dest)
+                    self.db.update_profile(
+                        user_id=self.user.id,
+                        profile_picture=filename
+                    )
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        "Profile picture updated!"
+                    )
+                except PermissionError:
+                    raise Exception("Permission denied when saving image")
+                except OSError as e:
+                    raise Exception(f"File system error: {str(e)}")
+
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Could not update picture:{e}", parent=self)
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"Could not update picture: {str(e)}"
+            )
 
     def save_settings(self):
         try:
@@ -173,19 +202,31 @@ class SettingsDialog(QDialog):
             phone = self.phone_input.text().strip()
             password = self.pass_input.text()
             conf_password = self.conf_pass_input.text()
-            if password and password != conf_password:
-                QMessageBox.warning(self, "Error", "Passwords do not match.", parent=self)
+
+            if not uname:
+                QMessageBox.warning(self, "Error", "Username cannot be empty.")
                 return
-            self.db.update_profile(
-                user_id=self.user.id,
-                username=uname,
-                phone_number=phone,
-                password=password if password else None
-            )
-            QMessageBox.information(self, "Saved", "Changes saved", parent=self)
-            self.accept()
+            if not phone:
+                QMessageBox.warning(self, "Error", "Phone number cannot be empty.")
+                return
+            if password and password != conf_password:
+                QMessageBox.warning(self, "Error", "Passwords do not match.")
+                return
+
+            try:
+                updated_user = self.db.update_profile(
+                    user_id=self.user.id,
+                    username=uname,
+                    phone_number=phone,
+                    password=password if password else None
+                )
+                QMessageBox.information(self, "Success", "Profile updated successfully!")
+                self.accept()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update profile: {str(e)}")
+
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Could not save changes:{e}", parent=self)
+            QMessageBox.critical(self, "Error", f"An unexpected error occurred: {str(e)}")
 
 
 class ContactCard(QWidget):
@@ -324,7 +365,7 @@ class ChatWindow(QWidget):
         self.receiver.start()
 
     def openSettingsDialog(self, evt):
-        SettingsDialog(self, self.username).exec()
+        SettingsDialog(self.current_user, self.db, self).exec()
 
     def open_contacts(self, evt):
         QMessageBox.information(self, "Contacts", f"{len(self.contacts)} Contacts added.")
