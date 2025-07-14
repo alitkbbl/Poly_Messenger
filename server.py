@@ -10,7 +10,7 @@ handlers_lock = threading.Lock()
 db = DatabaseManager()
 
 def send_json(writer, obj):
-    msg = json.dumps(obj) + "\n"
+    msg = json.dumps(obj) + "\n" #to string
     writer.write(msg)
     writer.flush()
 
@@ -30,7 +30,7 @@ class ClientHandler(threading.Thread):
                 if not line:
                     break
                 try:
-                    data = json.loads(line.strip())
+                    data = json.loads(line.strip()) # to dict
                 except:
                     send_json(self.writer, {"status": "error", "message": "Invalid data"})
                     continue

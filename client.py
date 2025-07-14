@@ -8,7 +8,7 @@ from PyQt6.QtGui import QPixmap, QFont
 from PyQt6 import QtCore
 from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QIcon
-from databasem import DatabaseManager
+from database import DatabaseManager
 
 print(os.path.abspath("Contact.png"))
 print(os.path.abspath("setting.png"))
@@ -237,11 +237,22 @@ class ContactCard(QWidget):
         self.username = username
         self.phone = phone
 
+
         if avatar is None or not os.path.exists(avatar):
             BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-            avatar = os.path.join(BASE_DIR, "Contact.png")
-            if not os.path.exists(avatar):
-                avatar = None
+            profile_pics_dir = os.path.join(BASE_DIR, "profile_pics")
+            os.makedirs(profile_pics_dir, exist_ok=True)
+
+            avatar_filename = f"profile_{self.username}.jpg"
+            avatar_path = os.path.join(profile_pics_dir, avatar_filename)
+
+            if os.path.exists(avatar_path):
+                avatar = avatar_path
+            else:
+                avatar_filename2 = "Contact.jpg"
+                default_avatar = os.path.join(profile_pics_dir, avatar_filename2)
+                avatar = default_avatar if os.path.exists(default_avatar) else None
+
         self.avatar = avatar
 
         self.setFixedHeight(68)

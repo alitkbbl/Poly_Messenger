@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap, QFont
 from PyQt6 import QtCore
+from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QIcon
 from database import DatabaseManager
 
@@ -161,18 +162,16 @@ class SettingsDialog(QDialog):
             )
 
             if file_path:
-                # ایجاد دایرکتوری اگر وجود ندارد
+
                 profile_dir = os.path.join(BASE_DIR, "profile_pics")
                 os.makedirs(profile_dir, exist_ok=True)
 
-                # بررسی قابل نوشتن بودن دایرکتوری
                 if not os.access(profile_dir, os.W_OK):
                     raise Exception("Cannot write to profile directory")
 
                 filename = f"profile_{self.user.username}.jpg"
                 dest = os.path.join(profile_dir, filename)
 
-                # کپی فایل با مدیریت خطا
                 try:
                     shutil.copyfile(file_path, dest)
                     self.db.update_profile(
@@ -231,6 +230,7 @@ class SettingsDialog(QDialog):
 
 class ContactCard(QWidget):
     clicked = pyqtSignal(str, str)
+    CONTACTS_FILE = "contacts.json"
 
     def __init__(self, username, phone, avatar=None):
         super().__init__()
@@ -239,9 +239,19 @@ class ContactCard(QWidget):
 
         if avatar is None or not os.path.exists(avatar):
             BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-            avatar = os.path.join(BASE_DIR, "Contact.png")
-            if not os.path.exists(avatar):
-                avatar = None
+            profile_pics_dir = os.path.join(BASE_DIR, "profile_pics")
+            os.makedirs(profile_pics_dir, exist_ok=True)
+
+            avatar_filename = f"profile_{self.username}.jpg"
+            avatar_path = os.path.join(profile_pics_dir, avatar_filename)
+
+            if os.path.exists(avatar_path):
+                avatar = avatar_path
+            else:
+                avatar_filename2 = "Contact.jpg"
+                default_avatar = os.path.join(profile_pics_dir, avatar_filename2)
+                avatar = default_avatar if os.path.exists(default_avatar) else None
+
         self.avatar = avatar
 
         self.setFixedHeight(68)
@@ -301,18 +311,28 @@ class ChatWindow(QWidget):
         sb_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         row_icons = QHBoxLayout()
         set_btn = QToolButton()
-        set_btn.setIcon(QIcon("setting.png"))
-        set_btn.setIconSize(QtCore.QSize(32, 32))
+        icon = QIcon("setting.png")
+        set_btn.setIcon(icon)
+        set_btn.setIconSize(QSize(32, 32))
         set_btn.setToolTip("Settings")
         set_btn.clicked.connect(self.openSettingsDialog)
 
         add_btn = QToolButton()
-        add_btn.setIcon(QIcon.fromTheme("list-add"))
-        add_btn.setText("➕")
-        add_btn.setIconSize(QtCore.QSize(25, 25))
+        icon = QIcon("Contact.png")
+        add_btn.setIcon(icon)
+        add_btn.setIconSize(QSize(32, 32))
         add_btn.setToolTip("Add Contact")
         add_btn.clicked.connect(self.openAddContactDialog)
+        row_icons.addWidget(add_btn)
         row_icons.addWidget(set_btn)
+
+        profile_btn = QToolButton()
+        profile_icon = QIcon("profile.png")
+        profile_btn.setIcon(profile_icon)
+        profile_btn.setIconSize(QSize(32, 32))
+        profile_btn.setToolTip("Profile")
+        profile_btn.clicked.connect(self.openProfileWindow)
+        row_icons.addWidget(profile_btn)
 
         row_icons.addWidget(add_btn)
         sb_layout.addLayout(row_icons)
@@ -435,6 +455,50 @@ class ChatWindow(QWidget):
         chat = PrivateChatWindow(self.db, self.current_user, contact_user)
         chat.show()
         self.open_chats.append(chat)
+
+    def openProfileWindow(self, evt=None):
+        dlg = ProfileDialog(self.current_user, self)
+        dlg.exec()
+
+
+class ProfileDialog(QDialog):
+    def __init__(self, user, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Profile")
+        vbox = QVBoxLayout(self)
+        vbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        if isinstance(user, dict):
+            username = user.get("username", "")
+            phone = user.get("phone", "")
+            avatar = user.get("avatar", "Contact.png")
+        else:
+            username = getattr(user, 'username', "")
+            phone = getattr(user, 'phone', "")
+            avatar = getattr(user, 'avatar', "Contact.png")
+        if not avatar or not isinstance(avatar, str) or not os.path.exists(avatar):
+            avatar = "Contact.png"
+        lbl_img = QLabel()
+        pix = QPixmap(avatar)
+        lbl_img.setPixmap(
+            pix.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        vbox.addWidget(lbl_img)
+
+        lbl_name = QLabel(f"Username: {username}")
+        lbl_name.setFont(QFont("Arial", 17, QFont.Weight.Bold))
+        lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_name.setStyleSheet("color:white;")
+        vbox.addWidget(lbl_name)
+
+        lbl_phone = QLabel(f"Phone: {phone}")
+        lbl_phone.setFont(QFont("Arial", 12))
+        lbl_phone.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_phone.setStyleSheet("color:white;")
+        vbox.addWidget(lbl_phone)
+        self.setStyleSheet("""
+            QDialog {background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2d4b8d, stop:1 #153051); border-radius:16px;}
+        """)
+        self.setFixedSize(330, 350)
 
 
 class PrivateChatWindow(QWidget):
@@ -794,7 +858,6 @@ def main():
     win = LoginWindow()
     win.show()
     sys.exit(app.exec())
-
 
 
 if __name__ == "__main__":
