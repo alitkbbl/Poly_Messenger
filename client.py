@@ -238,6 +238,7 @@ class ContactCard(QWidget):
         self.phone = phone
 
 
+
         if avatar is None or not os.path.exists(avatar):
             BASE_DIR = os.path.dirname(os.path.abspath(__file__))
             profile_pics_dir = os.path.join(BASE_DIR, "profile_pics")
