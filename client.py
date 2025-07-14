@@ -5,7 +5,6 @@ class ProfileDialog(QDialog):
         vbox = QVBoxLayout(self)
         vbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # --- پشتیبانی هم آبجکت هم دیکشنری user
         if isinstance(user, dict):
             username = user.get("username", "")
             phone = user.get("phone", "")
