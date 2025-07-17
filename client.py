@@ -826,6 +826,7 @@ class SignupWindow(QWidget):
             QMessageBox.critical(self, "Signup Failed", str(e))
 
 
+
 def main():
     app = QApplication(sys.argv)
     win = LoginWindow()
