@@ -693,36 +693,7 @@ class LoginWindow(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Connection Failed", str(e))
 
-    def handle_signin(self):
-        username = self.username_input.text().strip()
-        password = self.password_input.text().strip()
-        if not username or not password:
-            QMessageBox.warning(self, "Input Error", "Please enter username & password.")
-            return
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((SERVER_HOST, SERVER_PORT))
-            import json
-            data = {
-                "type": "login",
-                "username": username,
-                "password": password
-            }
-            sock.sendall((json.dumps(data) + '\n').encode('utf-8'))
-            resp = sock.recv(2048).decode('utf-8')
-            for line in resp.strip().split("\n"):
-                answer = json.loads(line)
-                if answer.get("status") == "ok":
-                    self.chat_window = ChatWindow(sock, username)
-                    self.chat_window.show()
-                    self.close()
-                    return
-                else:
-                    QMessageBox.critical(self, "Login Failed", answer.get("message", "Unknown error"))
-                    sock.close()
-                    return
-        except Exception as e:
-            QMessageBox.critical(self, "Connection Failed", str(e))
+
 
     def goto_signup(self):
         self.signupwindow = SignupWindow()
