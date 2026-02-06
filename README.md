@@ -20,6 +20,3 @@ A real-time chat application developed using Python and PyQt6, featuring live me
    git clone https://github.com/alitkbbl/Poly_Messenger.git
    pip install -r requirements.txt
    python main.py
-
-
-
